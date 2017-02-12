@@ -26,8 +26,8 @@ struct Species {
     name: String,
 
     // Colour of a species. This only specifies the hue.
-    // The saturation and lightness are hardcoded (however lightness changes
-    // when a pixel takes over another pixel).
+    // The saturation and lightness are hardcoded (however lightness could
+    // change when a pixel takes over another pixel).
     color: i16,
 
     // How much health a pixel of a species starts with.
