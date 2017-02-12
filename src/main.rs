@@ -170,18 +170,15 @@ impl<'a> PixelBoard<'a> {
     }
 }
 
-struct DisplayApp<'a> {
-    gl: GlGraphics,
-    pixel_board: &'a PixelBoard<'a>
+struct DisplayApp {
+    gl: GlGraphics
 }
 
-impl<'a> DisplayApp<'a> {
-    fn render(&mut self, args: &RenderArgs) {
+impl DisplayApp {
+    fn render(&mut self, args: &RenderArgs, pixel_board: &mut PixelBoard) {
         use graphics::*;
 
         const WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
-
-        let pixel_board = self.pixel_board;
 
         self.gl.draw(args.viewport(), |c, gl| {
             clear(WHITE, gl);
@@ -202,14 +199,12 @@ impl<'a> DisplayApp<'a> {
 
 fn main() {
     let species = Species::new_vec(16);
-    let pixel_board = PixelBoard::new(800, 600, &species);
+    let mut pixel_board = PixelBoard::new(800, 600, &species);
     for s in &species {
         println!("{:?}", s);
     }
-    /*for pixel in pixel_board.pixels {
-        println!("{:?}", pixel);
-    }*/
-    println!("sizes: board: {}, species: {}, pixel: {}",
+
+    println!("byte sizes: board: {}, species: {}, pixel: {}",
              mem::size_of::<PixelBoard>(),
              mem::size_of::<Species>(),
              mem::size_of::<Pixel>()
@@ -228,14 +223,13 @@ fn main() {
     .expect("Could not build OpenGL window");
 
     let mut display_app = DisplayApp {
-        gl: GlGraphics::new(opengl),
-        pixel_board: &pixel_board
+        gl: GlGraphics::new(opengl)
     };
 
     let mut events = Events::new(EventSettings::new().max_fps(60));
     while let Some(e) = events.next(&mut window) {
         if let Some(r) = e.render_args() {
-            display_app.render(&r);
+            display_app.render(&r, &mut pixel_board);
         }
         if let Some(u) = e.update_args() {
             display_app.update(&u);
