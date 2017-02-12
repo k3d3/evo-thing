@@ -17,28 +17,28 @@ struct Species {
 
     // How much health a pixel of a species starts with.
     // each pixel will lose health on successful attacks
-    health: u32,
+    health: u16,
 
     // How powerful an attack is against an enemy.
     // If an enemy has more strength, they are more likely to win.
     // Within a certain threshold, a fight might result in a tie.
     // Additionally, if the strength plus a random value differs enough,
     // One pixel's strength might be immediately depleted.
-    strength: u32,
+    strength: u16,
 
     // How much a pixel wants to attack an enemy.
     // This value plus a random value must be above a threshold to
     // perform an attack against an enemy.
-    desire: u32,
+    desire: u16,
 
     // How often a pixel will attack an enemy.
-    frequency: u32,
+    frequency: u16,
 
     // How long a pixel is expected to live.
     // A random value can be rolled which can cause a pixel to live
     // longer or shorter, however the threshold increases as the pixel
     // lives beyond its expectancy.
-    expectancy: u32,
+    expectancy: u16,
 }
 
 impl Species {
