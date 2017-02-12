@@ -2,20 +2,22 @@ extern crate rand;
 extern crate palette;
 extern crate piston;
 extern crate graphics;
+extern crate image;
 extern crate glutin_window;
 extern crate opengl_graphics;
+extern crate texture;
 
 use std::mem;
 
 use rand::Rng;
-
 use palette::{Rgb, Hsl};
-
 use piston::window::WindowSettings;
 use piston::event_loop::*;
 use piston::input::*;
 use glutin_window::GlutinWindow as Window;
-use opengl_graphics::{ GlGraphics, OpenGL };
+use opengl_graphics::{GlGraphics, OpenGL, Texture};
+use image::{ImageBuffer, Rgba, Pixel as imgPixel};
+use texture::TextureSettings;
 
 // Struct definition for a species
 #[derive(Debug)]
@@ -55,7 +57,8 @@ struct Species {
 
     // For speed and caching purposes, store the piston colour
     // along with the original colour
-    piston_color: graphics::types::Color
+    piston_color: graphics::types::Color,
+    image_color: Rgba<u8>
 }
 
 impl Species {
@@ -64,6 +67,12 @@ impl Species {
         let color = color.unwrap_or(rng.gen_range(-180,180));
         let palette_color = Rgb::from(Hsl::new((color as f32).into(), 1.0, 0.5));
         let piston_color = [palette_color.red, palette_color.green, palette_color.blue, 1.0];
+        let image_color = Rgba::from_channels(
+            (palette_color.red * 256.0) as u8,
+            (palette_color.green * 256.0) as u8,
+            (palette_color.blue * 256.0) as u8,
+            255
+        );
 
         Species {
             name: name.unwrap_or(rng.gen_ascii_chars().take(2).collect()),
@@ -74,7 +83,8 @@ impl Species {
             frequency: rng.gen(),
             expectancy: rng.gen(),
 
-            piston_color: piston_color
+            piston_color: piston_color,
+            image_color: image_color
         }
     }
 
@@ -130,6 +140,7 @@ impl<'a> Pixel<'a> {
 #[derive(Debug)]
 struct PixelBoard<'a> {
     width: usize,
+    height: usize,
     pixels: Vec<Pixel<'a>>
 }
 
@@ -142,12 +153,23 @@ impl<'a> PixelBoard<'a> {
             let selected_species = rng.choose(&species).expect("Pixel could not choose a species");
             pixels.push(Pixel::new(selected_species));
         }
-        PixelBoard{width: width, pixels: pixels}
+        PixelBoard{width: width, height: height, pixels: pixels}
     }
 
     fn get_rect(&self) -> (usize, usize) {
-        println!("width is {}, pixels len is {}", self.width, self.pixels.len());
-        (self.width, self.pixels.len()/self.width)
+        (self.width, self.height)
+    }
+
+    fn get_imagebuffer(&self) -> Option<ImageBuffer<image::Rgba<u8>, Vec<u8>>> {
+        let (width, height) = self.get_rect();
+        let storage = vec![0; 4 * self.pixels.len()];
+        ImageBuffer::from_raw(width as u32, height as u32, storage)
+            .map(|mut buf| {
+                for (b, p) in buf.pixels_mut().zip(&self.pixels) {
+                    *b = p.species.image_color;
+                }
+                buf
+            })
     }
 }
 
@@ -167,16 +189,12 @@ impl<'a> DisplayApp<'a> {
         self.gl.draw(args.viewport(), |c, gl| {
             clear(WHITE, gl);
 
-            // TODO: the call to rectangle() is lagging the crap out of
-            // this program. Draw to a bitmap instead to only draw once.
-            let (width, height) = pixel_board.get_rect();
-            for (i, p) in pixel_board.pixels.iter().enumerate() {
-                let x = i % pixel_board.width;
-                let y = i / pixel_board.width;
-                let s = rectangle::square(x as f64, y as f64, 1.0);
-                rectangle(p.species.piston_color, s, c.transform, gl);
+            if let Some(board_image) = pixel_board.get_imagebuffer() {
+                let image = Image::new().rect([0.0, 0.0, 800.0, 600.0]);
+                let settings = TextureSettings::new();
+                let texture = Texture::from_image(&board_image, &settings);
+                image.draw(&texture, &DrawState::default(), c.transform, gl);
             }
-            println!("done");
         });
     }
 
@@ -219,7 +237,7 @@ fn main() {
         pixel_board: &pixel_board
     };
 
-    let mut events = Events::new(EventSettings::new());
+    let mut events = Events::new(EventSettings::new().max_fps(60));
     while let Some(e) = events.next(&mut window) {
         if let Some(r) = e.render_args() {
             display_app.render(&r);
