@@ -9,6 +9,7 @@ extern crate texture;
 extern crate option_filter;
 
 use std::mem;
+use std::slice::Iter;
 
 use rand::Rng;
 use palette::{Rgb, Hsl};
@@ -19,9 +20,10 @@ use glutin_window::GlutinWindow as Window;
 use opengl_graphics::{GlGraphics, OpenGL, Texture};
 use image::{ImageBuffer, Rgba, Pixel as imgPixel};
 use texture::TextureSettings;
+use option_filter::OptionFilterExt;
 
 // Struct definition for a species
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 struct Species {
     // Name of a species. This should only be one or two characters long.
     name: String,
@@ -133,6 +135,49 @@ impl<'a> Pixel<'a> {
     }
 }
 
+enum Direction {
+    TopLeft,
+    Top,
+    TopRight,
+    Left,
+    Right,
+    BottomLeft,
+    Bottom,
+    BottomRight
+}
+
+impl Direction {
+    fn to_coords(&self) -> (isize, isize) {
+        use self::Direction::*;
+        match *self {
+            TopLeft => (-1, -1),
+            Top => (0, -1),
+            TopRight => (1, -1),
+            Left => (0, -1),
+            Right => (0, 1),
+            BottomLeft => (-1, 1),
+            Bottom => (0, 1),
+            BottomRight => (1, 1),
+        }
+    }
+
+    fn offset(&self, x: usize, y: usize) -> Option<(usize, usize)> {
+        let (xx, yy) = self.to_coords();
+        if let (Some(x), Some(y)) = (
+            if xx < 0 { x.checked_sub(-xx as usize) } else { x.checked_add(xx as usize) },
+            if yy < 0 { y.checked_sub(-yy as usize) } else { y.checked_add(yy as usize) },
+        ) { Some((x, y)) } else { None }
+    }
+
+    fn iter() -> Iter<'static, Direction> {
+        use self::Direction::*;
+        static DIRECTIONS: [Direction; 8] = [
+            TopLeft, Top, TopRight, Left, Right, BottomLeft, Bottom, BottomRight
+        ];
+        DIRECTIONS.into_iter()
+    }
+}
+
 // Struct definition for the board that holds all the species and pixels
 // (0,0) is the top-left corner
 #[derive(Debug)]
@@ -154,20 +199,35 @@ impl<'a> PixelBoard<'a> {
         PixelBoard{width: width, height: height, pixels: pixels}
     }
 
-    fn get_rect(&self) -> (usize, usize) {
-        (self.width, self.height)
-    }
-
-    fn get_imagebuffer(&self) -> Option<ImageBuffer<image::Rgba<u8>, Vec<u8>>> {
-        let (width, height) = self.get_rect();
+    fn get_imagebuffer(&self) -> Option<ImageBuffer<Rgba<u8>, Vec<u8>>> {
         let storage = vec![0; 4 * self.pixels.len()];
-        ImageBuffer::from_raw(width as u32, height as u32, storage)
+        ImageBuffer::from_raw(self.width as u32, self.height as u32, storage)
             .map(|mut buf| {
                 for (b, p) in buf.pixels_mut().zip(&self.pixels) {
                     *b = p.species.image_color;
                 }
                 buf
             })
+    }
+
+    fn get_pixel_and_enemies(&self, x: usize, y: usize) -> Option<(&Pixel, Vec<&Pixel>)> {
+        // Same as get_surrounding_enemy_pixels, but also get self
+        self.pixels.get(x + y*self.width)
+        .map(|me| (me, self.get_surrounding_enemy_pixels(x, y, &me)))
+    }
+
+    fn get_surrounding_enemy_pixels(&self, x: usize, y: usize, me: &Pixel) -> Vec<&Pixel> {
+        // Try to get all pixels. These will either return Some(Pixel) if in the
+        // vector range, or None if not. Then use filter_map to convert Some(Pixel)
+        // into Pixel and strip Nones from the vector.
+
+        Direction::iter() // Iterate through all directions
+        .flat_map(|d| d.offset(x, y)) // Get the offset for each direction, added to (x,y)
+        .filter_map(|(xx, yy)| {
+            // For each Pixel that exists (i.e. isn't off the edge), only retain if Pixel is an enemy
+            self.pixels.get(xx + yy*self.width).filter(|p| p.species != me.species)
+        })
+        .collect() // Collect into a list
     }
 }
 
@@ -199,17 +259,24 @@ impl DisplayApp {
 }
 
 fn main() {
-    let species = Species::new_vec(16);
+    // Create the species and pixel board
+    let species = Species::new_vec(8);
     let mut pixel_board = PixelBoard::new(800, 600, &species);
+
+    // Print the generated species
     for s in &species {
         println!("{:?}", s);
     }
-
     println!("byte sizes: board: {}, species: {}, pixel: {}",
              mem::size_of::<PixelBoard>(),
              mem::size_of::<Species>(),
              mem::size_of::<Pixel>()
     );
+
+    if let Some((me, enemies)) = pixel_board.get_pixel_and_enemies(5, 5) {
+        println!("me is {:?}", me);
+        println!("enemies (len {}) are {:?}", enemies.len(), enemies);
+    }
 
     // Display the initial board
     let opengl = OpenGL::V3_2;
