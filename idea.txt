@@ -16,7 +16,7 @@ What traits should each species have?
 - Health
 - Attack strength
   - When an attack occurs, this value (plus a small random value) should determine who wins, or if there's a tie.
-- Desire to attack? (fight vs flight)
+- Desire to attack?
   - This value (plus a small random value) must be above a threshold for an attack to occur.
   - If few attacks occur over enough rounds, this threshold could be dynamically lowered.
 - Frequency of attack
