@@ -1,5 +1,7 @@
 extern crate rand;
 
+use std::mem;
+
 use rand::Rng;
 
 // Struct definition for a species
@@ -128,8 +130,17 @@ impl<'a> PixelBoard<'a> {
 fn main() {
     // For testing purposes, let's do a pixel board that's 2x2
     // and has 4 species
-    let species = Species::new_vec(4);
-    let pixel_board = PixelBoard::new(2, 2, &species);
-    println!("{:?}", species);
-    println!("{:?}", pixel_board);
+    let species = Species::new_vec(16);
+    let pixel_board = PixelBoard::new(800, 600, &species);
+    for s in &species {
+        println!("{:?}", s);
+    }
+    /*for pixel in pixel_board.pixels {
+        println!("{:?}", pixel);
+    }*/
+    println!("sizes: board: {}, species: {}, pixel: {}",
+             mem::size_of::<PixelBoard>(),
+             mem::size_of::<Species>(),
+             mem::size_of::<Pixel>()
+    );
 }
