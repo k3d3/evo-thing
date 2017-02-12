@@ -6,6 +6,7 @@ extern crate image;
 extern crate glutin_window;
 extern crate opengl_graphics;
 extern crate texture;
+extern crate option_filter;
 
 use std::mem;
 
