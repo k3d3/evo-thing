@@ -51,3 +51,6 @@ If loss of life occurs within a blob (i.e. only the same species surrounds it), 
 
 Should the size of a species contribute to the edge pixels' strength in some way?
 - It could be based on the number of surrounding pixels that belong to the enemy vs the same species
+
+
+If hashmaps need to be optimized, switch the hashing function to FNV (the Servo one)
