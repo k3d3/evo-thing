@@ -1,8 +1,21 @@
 extern crate rand;
+extern crate palette;
+extern crate piston;
+extern crate graphics;
+extern crate glutin_window;
+extern crate opengl_graphics;
 
 use std::mem;
 
 use rand::Rng;
+
+use palette::{Rgb, Hsl};
+
+use piston::window::WindowSettings;
+use piston::event_loop::*;
+use piston::input::*;
+use glutin_window::GlutinWindow as Window;
+use opengl_graphics::{ GlGraphics, OpenGL };
 
 // Struct definition for a species
 #[derive(Debug)]
@@ -13,7 +26,7 @@ struct Species {
     // Colour of a species. This only specifies the hue.
     // The saturation and lightness are hardcoded (however lightness changes
     // when a pixel takes over another pixel).
-    color: u8,
+    color: i16,
 
     // How much health a pixel of a species starts with.
     // each pixel will lose health on successful attacks
@@ -39,19 +52,29 @@ struct Species {
     // longer or shorter, however the threshold increases as the pixel
     // lives beyond its expectancy.
     expectancy: u16,
+
+    // For speed and caching purposes, store the piston colour
+    // along with the original colour
+    piston_color: graphics::types::Color
 }
 
 impl Species {
-    fn new(name: Option<String>, color: Option<u8>) -> Species {
+    fn new(name: Option<String>, color: Option<i16>) -> Species {
         let mut rng = rand::thread_rng();
+        let color = color.unwrap_or(rng.gen_range(-180,180));
+        let palette_color = Rgb::from(Hsl::new((color as f32).into(), 1.0, 0.5));
+        let piston_color = [palette_color.red, palette_color.green, palette_color.blue, 1.0];
+
         Species {
             name: name.unwrap_or(rng.gen_ascii_chars().take(2).collect()),
-            color: color.unwrap_or(rng.gen()),
+            color: color,
             health: rng.gen(),
             strength: rng.gen(),
             desire: rng.gen(),
             frequency: rng.gen(),
-            expectancy: rng.gen()
+            expectancy: rng.gen(),
+
+            piston_color: piston_color
         }
     }
 
@@ -114,21 +137,53 @@ impl<'a> PixelBoard<'a> {
     pub fn new(width: usize, height: usize, species: &'a Vec<Species>) -> PixelBoard<'a> {
         let mut rng = rand::thread_rng();
 
-        //let species: Vec<Species> = Species::new_vec(num_species);
         let mut pixels: Vec<Pixel<'a>> = Vec::with_capacity(width*height);
         for _ in 0..pixels.capacity() {
             let selected_species = rng.choose(&species).expect("Pixel could not choose a species");
             pixels.push(Pixel::new(selected_species));
         }
-        PixelBoard{width: 0, pixels: pixels}
+        PixelBoard{width: width, pixels: pixels}
     }
 
-    // Return width and height
-    /*pub fn get_rect(&self) -> (usize, usize) {
+    fn get_rect(&self) -> (usize, usize) {
+        println!("width is {}, pixels len is {}", self.width, self.pixels.len());
         (self.width, self.pixels.len()/self.width)
-    }*/
+    }
 }
 
+struct DisplayApp<'a> {
+    gl: GlGraphics,
+    pixel_board: &'a PixelBoard<'a>
+}
+
+impl<'a> DisplayApp<'a> {
+    fn render(&mut self, args: &RenderArgs) {
+        use graphics::*;
+
+        const WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
+
+        let pixel_board = self.pixel_board;
+
+        self.gl.draw(args.viewport(), |c, gl| {
+            clear(WHITE, gl);
+
+            // TODO: the call to rectangle() is lagging the crap out of
+            // this program. Draw to a bitmap instead to only draw once.
+            let (width, height) = pixel_board.get_rect();
+            for (i, p) in pixel_board.pixels.iter().enumerate() {
+                let x = i % pixel_board.width;
+                let y = i / pixel_board.width;
+                let s = rectangle::square(x as f64, y as f64, 1.0);
+                rectangle(p.species.piston_color, s, c.transform, gl);
+            }
+            println!("done");
+        });
+    }
+
+    fn update(&mut self, args: &UpdateArgs) {
+
+    }
+}
 
 fn main() {
     // For testing purposes, let's do a pixel board that's 2x2
@@ -146,4 +201,31 @@ fn main() {
              mem::size_of::<Species>(),
              mem::size_of::<Pixel>()
     );
+
+    // Display the initial board
+    let opengl = OpenGL::V3_2;
+
+    let mut window: Window = WindowSettings::new(
+        "evo-thing",
+        [1920,1080]
+    )
+    .opengl(opengl)
+    .exit_on_esc(true)
+    .build()
+    .expect("Could not build OpenGL window");
+
+    let mut display_app = DisplayApp {
+        gl: GlGraphics::new(opengl),
+        pixel_board: &pixel_board
+    };
+
+    let mut events = Events::new(EventSettings::new());
+    while let Some(e) = events.next(&mut window) {
+        if let Some(r) = e.render_args() {
+            display_app.render(&r);
+        }
+        if let Some(u) = e.update_args() {
+            display_app.update(&u);
+        }
+    }
 }
