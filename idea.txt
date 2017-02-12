@@ -1,0 +1,53 @@
+evolution screensaver thing
+
+how should it start? should each pixel be its own species?
+
+Should an limited amount of species exist? How should they get distributed in the first place? Should they all be in one group, or dispersed?
+If all in one group, should they be equal and square amounts, or should they be randomized?
+If dispersed, should the amount of each species vary?
+
+^ that stuff should be change-able without too much effort to change anything else, as that is just laying out the initial form.
+The rest of the logic should be split out completely.
+For now, 8 species should exist, with equal boundaries, just as squares.
+
+-----
+
+What traits should each species have?
+- Health
+- Attack strength
+  - When an attack occurs, this value (plus a small random value) should determine who wins, or if there's a tie.
+- Desire to attack? (fight vs flight)
+  - This value (plus a small random value) must be above a threshold for an attack to occur.
+  - If few attacks occur over enough rounds, this threshold could be dynamically lowered.
+- Frequency of attack
+  - When an attack occurs, this value (plus a small random value) should be the number of rounds until the next attack occurs.
+- Length of life
+  - Regardless of health or attacks, this value should be the number of rounds that a pixel survives.
+- Chaos value
+  - For each round, a purely randomly generated value that determines if the pixel should die an unexpected death.
+
+- When a pixel dies, it should cede its position to a randomly-chosen enemy on the species' boundary.
+Additionally, all traits should have a colour and single-letter name associated with it, to show live stats on the side.
+
+Should all pixels of a species have the exact same traits, or should they slightly vary?
+- They should slightly vary, but hard to say by how much. Perhaps it should be a random walk, to create areas of low and high strength.
+
+Should there be separate genomes that can be formed? How do those form?
+- For now, no. This shouldn't be too hard to add in later, if desired. This is kinda needed for any evolution to occur, though.
+
+What order should the pixels attack each other?
+
+Each pixel is surrounded by 4 sides (8 if counting corners) - excluding the pixels containing the same species, how is a particular enemy chosen?
+I suppose randomness is a good option to begin with.
+Additionally, desire to attack and frequency of attack should play a part, so some pixels won't attack at all.
+
+What happens if a pixel has no desire to attack, but has to defend against another attack?
+
+If loss of life occurs within a blob (i.e. only the same species surrounds it), what should happen?
+- One of these options:
+- 1) The pixel goes grey, and is considered a neutral "enemy" that does not attack.
+- 2) Pixels surrounded only by the same species cannot die
+- 3) A random pixel from the boundary is substituted, ceding an edge pixel to an enemy
+
+Should the size of a species contribute to the edge pixels' strength in some way?
+- It could be based on the number of surrounding pixels that belong to the enemy vs the same species
