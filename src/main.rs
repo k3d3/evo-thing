@@ -57,9 +57,12 @@ impl Species {
 
     fn new_vec(size: usize) -> Vec<Species> {
         // Generate 2-char strings from AA to ZZ
-        let name_iter = (b'A'..b'Z').flat_map(move |a|
+        /*let name_iter = (b'A'..b'Z').flat_map(move |a|
             (b'A'..b'Z').map(move |b| format!("{}{}", a as char, b as char))
-        );
+        );*/
+
+        // Generate 1-char strings from A to Z
+        let name_iter = (b'A'..b'Z').map(move |a| format!("{}", a as char));
 
         // Generate species with random colours and values
         name_iter.take(size).map(|n| Species::new(Some(n), None)).collect()
