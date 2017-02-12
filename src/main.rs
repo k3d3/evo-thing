@@ -204,8 +204,6 @@ impl<'a> DisplayApp<'a> {
 }
 
 fn main() {
-    // For testing purposes, let's do a pixel board that's 2x2
-    // and has 4 species
     let species = Species::new_vec(16);
     let pixel_board = PixelBoard::new(800, 600, &species);
     for s in &species {
