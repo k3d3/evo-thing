@@ -57,7 +57,6 @@ struct Species {
 
     // For speed and caching purposes, store the piston colour
     // along with the original colour
-    piston_color: graphics::types::Color,
     image_color: Rgba<u8>
 }
 
@@ -66,7 +65,6 @@ impl Species {
         let mut rng = rand::thread_rng();
         let color = color.unwrap_or(rng.gen_range(-180,180));
         let palette_color = Rgb::from(Hsl::new((color as f32).into(), 1.0, 0.5));
-        let piston_color = [palette_color.red, palette_color.green, palette_color.blue, 1.0];
         let image_color = Rgba::from_channels(
             (palette_color.red * 256.0) as u8,
             (palette_color.green * 256.0) as u8,
@@ -83,7 +81,6 @@ impl Species {
             frequency: rng.gen(),
             expectancy: rng.gen(),
 
-            piston_color: piston_color,
             image_color: image_color
         }
     }
