@@ -142,6 +142,7 @@ impl<'a> Pixel<'a> {
     }
 }
 
+#[derive(Eq, PartialEq, Hash, Debug)]
 enum Direction {
     TopLeft,
     Top,
