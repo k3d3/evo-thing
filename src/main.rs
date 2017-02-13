@@ -261,7 +261,7 @@ impl DisplayApp {
             clear(WHITE, gl);
 
             if let Some(board_image) = pixel_board.get_imagebuffer() {
-                let image = Image::new().rect([0.0, 0.0, 800.0, 600.0]);
+                let image = Image::new().rect([0.0, 0.0, pixel_board.width as f64, pixel_board.height as f64]);
                 let settings = TextureSettings::new();
                 let texture = Texture::from_image(&board_image, &settings);
                 image.draw(&texture, &DrawState::default(), c.transform, gl);
@@ -277,7 +277,7 @@ impl DisplayApp {
 fn main() {
     // Create the species and pixel board
     let species = Species::new_vec(8);
-    let mut pixel_board = PixelBoard::new(800, 600, &species);
+    let mut pixel_board = PixelBoard::new(1400, 1080, &species);
 
     // Print the generated species
     for s in &species {
