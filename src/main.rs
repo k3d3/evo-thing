@@ -10,6 +10,7 @@ extern crate option_filter;
 
 use std::mem;
 use std::slice::Iter;
+use std::collections::HashMap;
 
 use rand::Rng;
 use palette::{Rgb, Hsl};
@@ -133,6 +134,12 @@ impl<'a> Pixel<'a> {
             expectancy_modifier: rng.gen_range(-10, 10),
         }
     }
+
+    // Find an enemy to fight, and return the chosen direction and result
+    // or return None if no fight occurs
+    fn pick_fight(&self, enemies: HashMap<Direction, &Pixel>) -> Option<(Direction, Pixel, Pixel)> {
+        None
+    }
 }
 
 enum Direction {
@@ -210,24 +217,32 @@ impl<'a> PixelBoard<'a> {
             })
     }
 
-    fn get_pixel_and_enemies(&self, x: usize, y: usize) -> Option<(&Pixel, Vec<&Pixel>)> {
+    fn get_pixel_and_enemies(&self, x: usize, y: usize) -> Option<(&Pixel, HashMap<&Direction, &Pixel>)> {
         // Same as get_surrounding_enemy_pixels, but also get self
         self.pixels.get(x + y*self.width)
         .map(|me| (me, self.get_surrounding_enemy_pixels(x, y, &me)))
     }
 
-    fn get_surrounding_enemy_pixels(&self, x: usize, y: usize, me: &Pixel) -> Vec<&Pixel> {
+    fn get_surrounding_enemy_pixels(&self, x: usize, y: usize, me: &Pixel) -> HashMap<&Direction, &Pixel> {
         // Try to get all pixels. These will either return Some(Pixel) if in the
         // vector range, or None if not. Then use filter_map to convert Some(Pixel)
         // into Pixel and strip Nones from the vector.
 
-        Direction::iter() // Iterate through all directions
-        .flat_map(|d| d.offset(x, y)) // Get the offset for each direction, added to (x,y)
+        /*Direction::iter() // Iterate through all directions
+        .flat_map(|d| (d, d.offset(x, y))) // Get the offset for each direction, added to (x,y)
+        .filter(|(d, offset)| offset.is_some())
         .filter_map(|(xx, yy)| {
             // For each Pixel that exists (i.e. isn't off the edge), only retain if Pixel is an enemy
             self.pixels.get(xx + yy*self.width).filter(|p| p.species != me.species)
+        })*/
+        Direction::iter()
+        .filter_map(|d| {
+            d.offset(x, y)
+             .and_then(|(xx, yy)| self.pixels.get(xx + yy*self.width))
+             .filter(|p| p.species != me.species)
+             .map(|p| (d, p))
         })
-        .collect() // Collect into a list
+        .collect() // Collect into a hashmap
     }
 }
 
