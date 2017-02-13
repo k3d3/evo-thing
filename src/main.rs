@@ -289,7 +289,7 @@ fn main() {
              mem::size_of::<Pixel>()
     );
 
-    if let Some((me, enemies)) = pixel_board.get_pixel_and_enemies(5, 5) {
+    if let Some((me, enemies)) = pixel_board.get_pixel_and_enemies(0, 0) {
         println!("me is {:?}", me);
         println!("enemies (len {}) are {:?}", enemies.len(), enemies);
     }
@@ -310,7 +310,7 @@ fn main() {
         gl: GlGraphics::new(opengl)
     };
 
-    let mut events = Events::new(EventSettings::new().max_fps(60));
+    let mut events = Events::new(EventSettings::new().max_fps(120));
     while let Some(e) = events.next(&mut window) {
         if let Some(r) = e.render_args() {
             display_app.render(&r, &mut pixel_board);
