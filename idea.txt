@@ -2,7 +2,7 @@ evolution screensaver thing
 
 how should it start? should each pixel be its own species?
 
-Should an limited amount of species exist? How should they get distributed in the first place? Should they all be in one group, or dispersed?
+Should a limited amount of species exist? How should they get distributed in the first place? Should they all be in one group, or dispersed?
 If all in one group, should they be equal and square amounts, or should they be randomized?
 If dispersed, should the amount of each species vary?
 
