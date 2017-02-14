@@ -67,6 +67,8 @@ struct Species {
 impl Species {
     fn new(name: Option<String>, color: Option<i16>) -> Species {
         let mut rng = rand::thread_rng();
+        // We're never actually passing in colours anywhere (just None)
+        // should colour still be a parameter?
         let color = color.unwrap_or(rng.gen_range(-180,180));
         let palette_color = Rgb::from(Hsl::new((color as f32).into(), 1.0, 0.5));
         let image_color = Rgba::from_channels(
@@ -79,6 +81,7 @@ impl Species {
         Species {
             name: name.unwrap_or(rng.gen_ascii_chars().take(2).collect()),
             color: color,
+            // TODO: find decent ranges for all of these, rather than 0-65535
             health: rng.gen(),
             strength: rng.gen(),
             desire: rng.gen(),
@@ -91,6 +94,8 @@ impl Species {
 
     fn new_vec(size: usize) -> Vec<Species> {
         // Generate 2-char strings from AA to ZZ
+        // There's likely some way to make this generic enough to allow
+        // any number char strings
         /*let name_iter = (b'A'..b'Z').flat_map(move |a|
             (b'A'..b'Z').map(move |b| format!("{}{}", a as char, b as char))
         );*/
@@ -119,7 +124,15 @@ struct Pixel<'a> {
     strength_modifier: i8,
     desire_modifier: i8,
     frequency_modifier: i8,
-    expectancy_modifier: i8
+    expectancy_modifier: i8,
+
+    // Dynamic variables
+    
+    // Health of this pixel
+    // starts out as species.health + health_modifier
+    //current_health: u16,
+    // Try to prevent pixels from fighting twice in a single round
+    //last_round_fought: u32
 }
 
 impl<'a> Pixel<'a> {
@@ -138,7 +151,7 @@ impl<'a> Pixel<'a> {
     // Find an enemy to fight, and return the chosen direction and result
     // or return None if no fight occurs
     fn pick_fight(&self, enemies: HashMap<Direction, &Pixel>) -> Option<(Direction, Pixel, Pixel)> {
-        None
+        None // We live in world peace, there is no need to fight
     }
 }
 
@@ -156,6 +169,8 @@ enum Direction {
 
 impl Direction {
     fn to_coords(&self) -> (isize, isize) {
+        // Take a direction and return x,y values
+        // corresponding to the direction
         use self::Direction::*;
         match *self {
             TopLeft => (-1, -1),
@@ -170,6 +185,8 @@ impl Direction {
     }
 
     fn offset(&self, x: usize, y: usize) -> Option<(usize, usize)> {
+        // Take a value given by to_coords and add it to a given x,y pair.
+        // checked_sub and checked_add return None if an overflow or underflow occurs (i.e. 0-1)
         let (xx, yy) = self.to_coords();
         if let (Some(x), Some(y)) = (
             if xx < 0 { x.checked_sub(-xx as usize) } else { x.checked_add(xx as usize) },
@@ -178,6 +195,7 @@ impl Direction {
     }
 
     fn iter() -> Iter<'static, Direction> {
+        // Build an iterator that iterates through all directions in the enum
         use self::Direction::*;
         static DIRECTIONS: [Direction; 8] = [
             TopLeft, Top, TopRight, Left, Right, BottomLeft, Bottom, BottomRight
@@ -186,7 +204,7 @@ impl Direction {
     }
 }
 
-// Struct definition for the board that holds all the species and pixels
+// Struct definition for the board that holds all the pixels
 // (0,0) is the top-left corner
 #[derive(Debug)]
 struct PixelBoard<'a> {
@@ -197,6 +215,8 @@ struct PixelBoard<'a> {
 
 impl<'a> PixelBoard<'a> {
     pub fn new(width: usize, height: usize, species: &'a Vec<Species>) -> PixelBoard<'a> {
+        // Create a new pixel board. Randomly generate pixels in a width*height board
+        // and randomly assign species to each pixel.
         let mut rng = rand::thread_rng();
 
         let mut pixels: Vec<Pixel<'a>> = Vec::with_capacity(width*height);
@@ -208,6 +228,8 @@ impl<'a> PixelBoard<'a> {
     }
 
     fn get_imagebuffer(&self) -> Option<ImageBuffer<Rgba<u8>, Vec<u8>>> {
+        // Take the current state of the pixel board and output it as an image buffer
+        // to be passed to Piston for display.
         let storage = vec![0; 4 * self.pixels.len()];
         ImageBuffer::from_raw(self.width as u32, self.height as u32, storage)
             .map(|mut buf| {
@@ -224,18 +246,13 @@ impl<'a> PixelBoard<'a> {
         .map(|me| (me, self.get_surrounding_enemy_pixels(x, y, &me)))
     }
 
+    // TODO: for pick_fight, this might need to mutably borrow
+    // Alternatively, return an Action as an enum/sum type and use that for transformations?
     fn get_surrounding_enemy_pixels(&self, x: usize, y: usize, me: &Pixel) -> HashMap<&Direction, &Pixel> {
         // Try to get all pixels. These will either return Some(Pixel) if in the
         // vector range, or None if not. Then use filter_map to convert Some(Pixel)
         // into Pixel and strip Nones from the vector.
 
-        /*Direction::iter() // Iterate through all directions
-        .flat_map(|d| (d, d.offset(x, y))) // Get the offset for each direction, added to (x,y)
-        .filter(|(d, offset)| offset.is_some())
-        .filter_map(|(xx, yy)| {
-            // For each Pixel that exists (i.e. isn't off the edge), only retain if Pixel is an enemy
-            self.pixels.get(xx + yy*self.width).filter(|p| p.species != me.species)
-        })*/
         Direction::iter()
         .filter_map(|d| {
             d.offset(x, y)
@@ -247,20 +264,25 @@ impl<'a> PixelBoard<'a> {
     }
 }
 
+// Piston apparently demands this.
 struct DisplayApp {
     gl: GlGraphics
 }
 
 impl DisplayApp {
     fn render(&mut self, args: &RenderArgs, pixel_board: &mut PixelBoard) {
+        // Main function used in Piston's OpenGL render loop
         use graphics::*;
 
+        // Piston apparently has this as a constant somewhere, but I'm too lazy to find it.
         const WHITE: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 
         self.gl.draw(args.viewport(), |c, gl| {
             clear(WHITE, gl);
 
             if let Some(board_image) = pixel_board.get_imagebuffer() {
+                // Take the image buffer and render it to an OpenGL texture
+                // then draw that texture to screen
                 let image = Image::new().rect([0.0, 0.0, pixel_board.width as f64, pixel_board.height as f64]);
                 let settings = TextureSettings::new();
                 let texture = Texture::from_image(&board_image, &settings);
@@ -270,7 +292,7 @@ impl DisplayApp {
     }
 
     fn update(&mut self, args: &UpdateArgs) {
-
+        // This function doesn't really need to be used yet.
     }
 }
 
@@ -283,12 +305,16 @@ fn main() {
     for s in &species {
         println!("{:?}", s);
     }
+
+    // Just for curiosity sake, print out the byte sizes of each
+    // Current byte sizes: board: 40, species: 40, pixel: 16
     println!("byte sizes: board: {}, species: {}, pixel: {}",
              mem::size_of::<PixelBoard>(),
              mem::size_of::<Species>(),
              mem::size_of::<Pixel>()
     );
 
+    // Test to see what comes back as enemies
     if let Some((me, enemies)) = pixel_board.get_pixel_and_enemies(0, 0) {
         println!("me is {:?}", me);
         println!("enemies (len {}) are {:?}", enemies.len(), enemies);
@@ -310,7 +336,7 @@ fn main() {
         gl: GlGraphics::new(opengl)
     };
 
-    let mut events = Events::new(EventSettings::new().max_fps(120));
+    let mut events = Events::new(EventSettings::new().max_fps(60));
     while let Some(e) = events.next(&mut window) {
         if let Some(r) = e.render_args() {
             display_app.render(&r, &mut pixel_board);
